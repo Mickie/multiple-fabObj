@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="//code.jquery.com/ui/1.10.4/themes/smoothness/jquery-ui.css">
+    <script src="js/jquery-1.10.2.min.js"></script>
+    <script src="js/fabric.js"></script>
+    <script src="js/mousewheel.js"></script>
+    <script src="js/require-jquery.js"></script>
+    <script src="js/jquery-ui.js"></script>
+
+    <script>
+        var fabCanvas;
+        var oImgWidth,oImgHeight;
+        var ratio=1;
+        var sizeChanged=1;
+        var theArray=[{leftTopX:50,leftTopY:20,width:100,height:100},{leftTopX:200,leftTopY:20,width:100,height:100}];
+        var currentFabObjId="";
+        var newArray=[{leftTopX:50,leftTopY:20,width:100,height:100},{leftTopX:200,leftTopY:20,width:100,height:100}];//fabObj pos
+
+        $(function(){
+            $('#result-div').tabs();
+        })
+
+        function start(){
+            //stat load img
+            if(selectImgSrcArray.length!==0){
+                loadImg(selectImgSrcArray[0]);
+                //adjust arrays
+                selectImgSrcArray.shift();
+                var currentFile=selectImgName[0];
+                selectImgName.shift();
+                updateRemainImgName(selectImgName,currentFile);
+            }
+            else{
+                destroyFabric();
+                alert("there is no img");
+            }
+
+        }
+
+        function updateRemainImgName(anImgNameArray,currentImgName){
+            //left-panel show remain img #
+            var element=$('#left-panel');
+            element.empty();
+            for(var i=0;i<anImgNameArray.length;i++){ //first-load i start from 1
+                var content="<span>"+anImgNameArray[i]+"</span><br>";
+                element.append(content);
+            }
+            //current-file show current img name
+            $("#current-file").val(currentImgName);
+        }
+
+        function loadImg(src){
+            var img = new Image();
+            img.src=src;
+            $('img').attr('src',img.src);
+            creatFabricCanvas(img);
+        }
+        function creatFabricCanvas(anImg){
+            anImg.onload=function(){
+                var imgWidth=this.width;
+                var imgHeight=this.height;
+                oImgWidth=imgWidth;
+                oImgHeight=imgHeight;
+                fabCanvas=new fabric.Canvas('canvas');
+                fabCanvas.setWidth(imgWidth);
+                fabCanvas.setHeight(imgHeight);
+                fabCanvas.calcOffset();
+                addFabricObj(newArray);
+                mouseMoveEvent();
+                setHotKey();
+            }
+        }
+
+        function destroyFabric(){
+            fabCanvas.clear();
+            $("#img-div").empty();
+            $("#current-file").val("");
+        }
+
+        function addFabricObj(anArray){ //[{leftTopX:1,leftTopY:2,width:3,height:4},{leftTopX:1,leftTopY:2,width:3,height:4}]
+            for(var i=0;i<anArray.length;i++){
+                var individual=anArray[i];
+                var indi_x=individual.leftTopX;
+                var indi_y=individual.leftTopY;
+                var indi_w=individual.width;
+                var indi_h=individual.height;
+                addIndividual(indi_x,indi_y,indi_w,indi_h,i);
+                formatFabricControlStyle();
+                //showFabricObjPos(i);
+                var content="no save yet";
+                $("#result-tab").html(content);
+            }
+
+                function addIndividual(leftTopX,leftTopY,w,h,id){
+                    var rect= new fabric.Rect({
+                        id:id,
+                        width:w,
+                        height:h,
+                        left:leftTopX,
+                        top:leftTopY,
+                        opacity: 0.5,
+                        fill:'transparent',
+                        stroke:'blue'
+                    })
+                    fabCanvas.add(rect).calcOffset();
+                    fabCanvas.renderAll();
+                }
+
+        }
+        function showFabricObjPos(i){
+            var content="leftTopX<input id='x"+i+"'value=' ' ><br>"+"leftTopY<input id='y"+i+"'value=' ' ><br>"+
+                    "width<input id='w"+i+"'value=' ' ><br>"+"height<input id='h"+i+"'value=' ' ><br><br><br>";
+            var content1="OriginalleftTopX<input id='xl"+i+"'value=' ' ><br>"+"OriginalleftTopY<input id='yl"+i+"'value=' ' ><br>"+
+                    "Originalwidth<input id='wl"+i+"'value=' ' ><br>"+"Originalheight<input id='hl"+i+"'value=' ' ><br><br><br>";
+            $('#coords_tab').append(content);
+            $('#coords_tab').append(content1);
+        }
+
+        function formatFabricControlStyle(){
+            fabric.Object.prototype.lockMovementX=true;
+            fabric.Object.prototype.lockMovementY=true;
+            fabric.Object.prototype.hasRotatingPoint=false;
+            fabric.Object.prototype.borderColor='red';
+            fabric.Object.prototype.cornerColor='green';
+        }
+
+        function mouseMoveEvent(){
+            var stats=0;
+            fabCanvas.on('mouse:down',function(e){
+                var $this= e.target;
+                if($this=="#<fabric.Rect>"){
+                    stats=1;
+                    currentFabObjId=$this.id;
+                    $('#coords_tab').empty();
+                    showFabricObjPos($this.id);
+                    updateFabricObjPos($this,$this.id,'newArray');
+                }
+            })
+            fabCanvas.on('mouse:up',function(e){
+                if(stats==1){
+                    updateFabricObjPos(e.target, e.target.id,'newArray');
+                    stats=0;
+                }
+            })
+        }
+        function updateFabricObjPos(obj,objId,param){ //change posArrays and input show value
+
+                     if(param=='newArray'){ //change pos manually,update arrays
+                         newArray[objId].leftTopX=obj.getLeft()/sizeChanged;
+                         newArray[objId].leftTopY=obj.getTop()/sizeChanged;
+                         newArray[objId].width=obj.getWidth()/sizeChanged;
+                         newArray[objId].height=obj.getHeight()/sizeChanged;
+                     }
+                     if(param=='theArray'){ //reset pos arrays and manually show
+                         newArray[objId].leftTopX=theArray[objId].leftTopX;
+                         newArray[objId].leftTopY=theArray[objId].leftTopY;
+                         newArray[objId].width=theArray[objId].width;
+                         newArray[objId].height=theArray[objId].height;
+                         //show
+                         obj.setLeft(newArray[objId].leftTopX*sizeChanged);
+                         obj.setTop(newArray[objId].leftTopY*sizeChanged);
+                         obj.setWidth(newArray[objId].width*sizeChanged);
+                         obj.setHeight(newArray[objId].height*sizeChanged);
+                         fabCanvas.renderAll();//!important
+                     }
+
+                     $('#x'+objId).val(newArray[objId].leftTopX);
+                     $('#y'+objId).val(newArray[objId].leftTopY);
+                     $('#w'+objId).val(newArray[objId].width);
+                     $('#h'+objId).val(newArray[objId].height);
+
+                     $('#xl'+objId).val(theArray[objId].leftTopX);
+                     $('#yl'+objId).val(theArray[objId].leftTopY);
+                     $('#wl'+objId).val(theArray[objId].width);
+                     $('#hl'+objId).val(theArray[objId].height);
+        }
+
+        function save(){
+            //show last pic result
+            var content='';
+            for(var i=0;i<newArray.length;i++){
+                var item=newArray[i];
+                content+="{leftTopX: "+item.leftTopX+", leftTopY: "+item.leftTopY+", width: "+item.width+", height:"+item.height+"}\n";
+            }
+            $('#result_tab').html(content);
+            if($('#tbc').html()=="this tab is empty, tbc..."){
+                $('#tbc').empty().append(content);
+            }
+            else{
+                $('#tbc').append(content);
+            }
+            $("a[href='#result_tab']").trigger('click');
+            //restart, here is supposed to locate new rect arrays
+             theArray=[{leftTopX:100,leftTopY:40,width:100,height:100},{leftTopX:250,leftTopY:40,width:100,height:100}];
+             newArray=[{leftTopX:100,leftTopY:40,width:100,height:100},{leftTopX:250,leftTopY:40,width:100,height:100}];//fabObj pos
+            //remove whole fabric and append canvas and img tag again
+            var canvasEl=" <canvas id='canvas' style='border:1px solid transparent;position:absolute;top:0;left:0;z-index:1;'></canvas>";
+            var imgEl="<img src='' style='position:absolute;top:0;left:0'>";
+            $("#img-div").empty().append(canvasEl).append(imgEl);
+            $("#coords_tab").empty();
+            start();
+            ratio=1;
+            sizeChanged=1;
+        }
+        //scaleBig scaleSmall rest functionality
+        function scaleBig(){
+            imgToSize(1.2);
+        }
+        function scaleSmall(){
+            imgToSize(0.8);
+        }
+
+        function imgToSize(size){
+              //change img css ratio
+              var img=$('img');
+              var theWidth=img.width();
+              var theHeight=img.height();
+              img.width(theWidth*size);
+              img.height(theHeight*size);
+            //change fabric canvas ratio
+            fabCanvas.setWidth(theWidth*size);
+            fabCanvas.setHeight(theHeight*size);
+            fabCanvas.calcOffset();
+            ratio=oImgWidth/theWidth*size;//get changed ratio after resizing
+            var objs=getObjects();
+            for(var i=0;i<objs.length;i++){
+                var width=objs[i].getWidth();
+                var height=objs[i].getHeight();
+                var top=objs[i].getTop();
+                var left=objs[i].getLeft();
+                objs[i].setWidth(width*size).setCoords();
+                objs[i].setHeight(height*size).setCoords();
+                objs[i].setLeft(left*size).setCoords();
+                objs[i].setTop(top*size).setCoords();
+            }
+            fabCanvas.renderAll();
+            sizeChanged=sizeChanged*size;
+        }
+
+        function getObjects(){
+            var canvasObjects = fabCanvas.getObjects();
+            var theArray = new Array();
+            for(obj in canvasObjects){
+                if(canvasObjects[obj].get('type') == 'rect'){
+                    theArray.push(canvasObjects[obj]);
+                }
+            }
+            return theArray;
+        }
+
+        function reset(){
+          var $this=fabCanvas.item(currentFabObjId);
+          if(currentFabObjId!==""){
+                  updateFabricObjPos($this,$this.id,'theArray');
+                  alert("changedsize"+sizeChanged);
+          }
+          else{
+              alert('please select a rect');
+          }
+        }
+
+        function setHotKey(){
+            //setup HotKeys
+            $(document).bind('keydown',function(){
+                var char=window.event.keyCode;
+                if(typeof(fabCanvas.item(currentFabObjId))!=='undefined'){
+                    var obj=fabCanvas.item(currentFabObjId);
+                    if(char==37){ //向左键
+                        var left=obj.getLeft();
+                        var width=obj.getWidth();
+                        if(parseInt(left)>10){
+                            obj.setWidth(width+10).setCoords();
+                            obj.setLeft(left-10).setCoords();
+                        }
+                        event.preventDefault();
+                    }
+                    if(char==39){ //向右键
+                        var width=obj.getWidth();
+                        obj.setWidth(width+10).setCoords();
+                        event.preventDefault();
+                    }
+                    if(char==38){// "^"向上键
+                        var top=obj.getTop();
+                        var height=obj.getHeight();
+                        if(parseInt(top)>10){
+                            obj.setHeight(height+10).setCoords();
+                            obj.setTop(top-10).setCoords();
+                        }
+                        event.preventDefault();
+                    }
+                    if(char==40){ // 向下键
+                        var height=obj.getHeight();
+                        obj.setHeight(height+10).setCoords();
+                        event.preventDefault();
+                    }
+                    if(char==65){ // A键,reverse向左键
+                        var left=obj.getLeft();
+                        var width=obj.getWidth();
+                        obj.setWidth(width-10).setCoords();
+                        obj.setLeft(left+10).setCoords();
+                        event.preventDefault();
+                    }
+                    if(char==87){ // w键,reverse向上键
+                        var top=obj.getTop();
+                        var height=obj.getHeight();
+                        obj.setHeight(height-10).setCoords();
+                        obj.setTop(top+10).setCoords();
+                        event.preventDefault();
+                    }
+                    if(char==68){ // d键,reverse向右键
+                        var width=obj.getWidth();
+                        obj.setWidth(width-10).setCoords();
+                        event.preventDefault();
+                    }
+                    if(char==83){ // s键,reverse向下键
+                        var height=obj.getHeight();
+                        obj.setHeight(height-10).setCoords();
+                        event.preventDefault();
+                    }
+                    fabCanvas.renderAll();
+                    updateFabricObjPos(obj,obj.id,'newArray');
+                }
+            })
+        }
+    </script>
+    <style>
+        body,html,#wrapper{
+            width:100%;
+            height:100%;
+        }
+        #wrapper{
+            max-width:1910px;
+        }
+        #operation-div{
+            width:auto;
+            height:40px;
+            /*border:1px solid blue;*/
+            margin-right:28px;
+            padding-top:10px;
+        }
+        #left-panel{
+            width:200px;
+            float:left;
+            height:100%;
+            border:1px solid gray;
+            overflow:scroll;
+        }
+        #right-par{
+            width:auto;
+            margin-left:220px;
+            margin-right:30px;
+        }
+        #img-div{
+            width:100%;
+            height:500px;
+            border:1px solid gray;
+            position:relative;
+            overflow:scroll;
+        }
+        #fab_op{
+            width:100%;
+            height:40px;
+            position:absolute;
+            left:225px;
+        }
+        #result-div{
+            width:100%;
+            height:300px;
+            border:1px solid gray;
+            margin-top:20px;
+            overflow: scroll;
+        }
+        #Files{
+            border:1px solid gray;
+        }
+
+    </style>
+</head>
+<body>
+<!--<div id="wrapper" style="position:relative;">-->
+    <!--<canvas id="canvas" style="border:1px solid black;position:absolute;top:0;left:0;z-index:1;" ></canvas>-->
+    <!--<img src="" style="position:absolute;top:0;left:0;">-->
+    <!--<div style="clear:both"></div>-->
+<!--</div>-->
+<!--<div id="result" style="height:100px;width:auto;border:1px solid black;margin-top:10px;"></div>-->
+<!--<br>-->
+<!--<button onclick="showId()" style="position:absolute;right:250px;">click me to show obj id</button>-->
+<!--<button onclick="save()" style="position:absolute;right:50px;">click me to save and show</button>-->
+<!--<button onclick="test()" style="position:absolute;right:400px;">test</button><br>-->
+<!--<input type="file" id="Files" name="files[]" style='margin-top:200px;'accept="images/*" multiple>-->
+<!--<ul id="Errors"></ul>-->
+<!--<div id="Preview"></div>-->
+<div id="wrapper">
+    <div id="operation-div">
+        <input type="file" id="Files" name="files[]" accept="images/*" multiple>
+        <button onclick="start()" >start</button><!-- start process -->
+        <button onclick="save()" >save</button>
+        currentFile:<input id="current-file" value="">
+        <ul id="Errors"></ul>
+    </div>
+    <div id="left-panel"></div>
+    <div id="right-par">
+        <div id="img-div">
+            <canvas id="canvas" style="border:1px solid transparent;position:absolute;top:0;left:0;z-index:1;"></canvas>
+            <img src="" style="position:absolute;top:0;left:0">
+        </div>
+        <div id="fab_op">
+            <button onclick="scaleBig()">scale big</button>
+            <button onclick="scaleSmall()">scale small</button>
+            <button onclick="reset()">reset</button>
+        </div>
+        <div id="result-div">
+            <ul style="height:43px;">
+                <li><a href="#coords_tab">当前图片坐标</a></li>
+                <li><a href="#result_tab">查看当前图片保存记录</a></li>
+                <li><a href="#tbc">查看所有保存过的记录</a></li>
+            </ul>
+            <div id="coords_tab"></div>
+            <div id="result_tab"></div>
+            <div id="tbc">this tab is empty, tbc...</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    //upload images
+    var selectImgName=[];
+    var selectImgSrcArray=[];
+    (function($) {
+        function fileSelect(e) {
+            e = e || window.event;
+            var files = e.target.files;  //FileList Objects
+            var ireg = /image\/.*/i,
+                    //define element to show pics
+                    p=document.getElementById('img');
+                    //p = document.getElementById('Preview');
+            var ul = document.getElementById('Errors');
+            for(var i = 0, f; f = files[i]; i++) {
+                if(!f.type.match(ireg)) {
+                    //设置错误信息
+                    var li = document.createElement('li');
+                    li.innerHTML = '<li>' + f.name +'不是图片文件.</li>';
+                    ul.appendChild(li);
+                    continue;
+                }
+
+                var reader = new FileReader();
+                reader.onload = (function(file) {
+                    return function(e) {
+                        //get selectArray;
+                          selectImgSrcArray.push(this.result);
+                          selectImgName.push(file.name);
+                            //attach file name to left-panel
+                          var content="<span>"+file.name+"</span><br>";
+                          $("#left-panel").append(content);
+//                        var span = document.createElement('span');
+//                        span.innerHTML = '<img class="thumb" src="'+ this.result +'" alt="'+ file.name +'" />';
+//                        p.insertBefore(span, null);
+                    };
+                })(f);
+                //读取文件内容
+                reader.readAsDataURL(f);
+            }
+        }
+
+        if(window.File && window.FileList && window.FileReader && window.Blob) {
+            document.getElementById('Files').addEventListener('change', fileSelect, false);
+//            document.getElementById('Preview').addEventListener('click', function(e) {
+//                if(e.target.tagName.toLowerCase() == 'img' && e.target.className == 'thumb') {
+//                    e.target.className = '';
+//                }  else if(e.target.tagName.toLowerCase() == 'img' && e.target.className == '') {
+//                    e.target.className = 'thumb';
+//                }
+//            });
+        } else {
+            document.write('您的浏览器不支持File Api');
+        }
+    })(jQuery);
+
+</script>
+</body>
+</html>
